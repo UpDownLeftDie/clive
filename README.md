@@ -57,10 +57,13 @@ Before starting, make sure [nodejs](https://nodejs.org/en/download/) v8.9.0 or l
 * `BROADCASTER_ONLY` (optional) \[false\]
   * If true, only allows the broadcaster to post clips. **NOTE**: broadcaster is **not** considered a mod by default on Twitch.
 * `RICH_EMBED` (optional) \[true\]
-
   * **REQUIRES**: `TWICH_CLIENT_ID` to be set.  
     If true will post two messages to Discord the first being the video and the second being a rich embed box that contains more information about the clip.  
     Two separate messages are necessary because Discord doesn't allow setting `video` element inside of the rich embed object.
+* `API` (optional) \[false\]
+  * Turns on API endpoints for Clive.
+* `API_PORT` (optional) \[3000\]
+  * Sets the port for the API.
 
 `MODS_ONLY`, `SUBS_ONLY`, and `BROADCASTER_ONLY` can be combined.  
 Example: turning all `BROADCASTER_ONLY` and `SUBS_ONLY` will only share clips posted by those two groups.  

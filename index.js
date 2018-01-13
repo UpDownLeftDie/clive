@@ -24,6 +24,8 @@ const BROADCASTER_ONLY =
 const MODS_ONLY = _.get(process, 'env.MODS_ONLY') === 'true' || false;
 const SUBS_ONLY = _.get(process, 'env.SUBS_ONLY') === 'true' || false;
 const RICH_EMBED = _.get(process, 'env.RICH_EMBED') === 'true' || false;
+const API = _.get(process, 'env.API') === 'true' || false;
+const API_PORT = _.get(process, 'env.API_PORT') || 3000;
 
 //Initialize logger
 const logger = createLogger({
@@ -42,6 +44,10 @@ if (process.env.NODE_ENV !== 'production') {
       format: format.simple(),
     }),
   );
+}
+
+if (API) {
+  require('./router')(API_PORT);
 }
 
 // If we have a twitch client ID and you want to restrict postings of clips to only those channels Clive is watching
