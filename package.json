@@ -10,10 +10,11 @@
 		"precommit": "lint-staged"
 	},
 	"dependencies": {
-		"apollo-server": "^0.3.3",
+		"apollo-server-koa": "^1.3.2",
 		"dotenv": "^5.0.0",
 		"graphql": "^0.12.3",
 		"koa": "^2.4.1",
+		"koa-bodyparser": "^4.2.0",
 		"koa-router": "^7.4.0",
 		"lodash": "^4.17.5",
 		"lowdb": "^1.0.0",
@@ -38,10 +39,6 @@
 		],
 		"**/*.json": [
 			"prettier --write --parser json",
-			"git add"
-		],
-		"**/*.md": [
-			"prettier --write --parser --prose-wrap never markdown",
 			"git add"
 		],
 		"**/*.md": [

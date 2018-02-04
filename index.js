@@ -1,9 +1,9 @@
 'use strict';
-if (process.env.NODE_ENV !== 'production') {
+const _ = require('lodash');
+if (_.get(process, 'env.NODE_ENV') !== 'production') {
   require('dotenv').load();
 }
 // Imports
-const _ = require('lodash');
 const FileSync = require('lowdb/adapters/FileSync');
 const lowdb = require('lowdb');
 const request = require('request-promise');
@@ -12,24 +12,25 @@ const URI = require('urijs');
 const { createLogger, format, transports } = require('winston');
 
 //Initialize constants
-const DISCORD_WEBHOOK_URL = _.get(process, 'env.DISCORD_WEBHOOK_URL');
-const TWITCH_CHANNELS = generateChannelList(
-  _.get(process, 'env.TWITCH_CHANNELS'),
-);
-const DB_FILE = _.get(process, 'env.DB_FILE') || 'db.json';
-const TWITCH_CLIENT_ID = _.get(process, 'env.TWITCH_CLIENT_ID') || null;
-const RESTRICT_CHANNELS = _.get(process, 'env.RESTRICT_CHANNELS') || true;
-const BROADCASTER_ONLY =
-  _.get(process, 'env.BROADCASTER_ONLY') === 'true' || false;
-const MODS_ONLY = _.get(process, 'env.MODS_ONLY') === 'true' || false;
-const SUBS_ONLY = _.get(process, 'env.SUBS_ONLY') === 'true' || false;
-const RICH_EMBED = _.get(process, 'env.RICH_EMBED') === 'true' || false;
-const API = _.get(process, 'env.API') === 'true' || false;
-const API_PORT = _.get(process, 'env.API_PORT') || 3000;
+const config = {
+  NODE_ENV: _.get(process, 'end.NODE_ENV'),
+  LOG_LEVEL: _.get(process, 'env.LOG_LEVEL') || 'error',
+  DISCORD_WEBHOOK_URL: _.get(process, 'env.DISCORD_WEBHOOK_URL'),
+  TWITCH_CHANNELS: generateChannelList(_.get(process, 'env.TWITCH_CHANNELS')),
+  DB_FILE: _.get(process, 'env.DB_FILE') || 'db.json',
+  TWITCH_CLIENT_ID: _.get(process, 'env.TWITCH_CLIENT_ID') || null,
+  RESTRICT_CHANNELS: _.get(process, 'env.RESTRICT_CHANNELS') || true,
+  BROADCASTER_ONLY: _.get(process, 'env.BROADCASTER_ONLY') === 'true' || false,
+  MODS_ONLY: _.get(process, 'env.MODS_ONLY') === 'true' || false,
+  SUBS_ONLY: _.get(process, 'env.SUBS_ONLY') === 'true' || false,
+  RICH_EMBED: _.get(process, 'env.RICH_EMBED') === 'true' || false,
+  API: _.get(process, 'env.API') === 'true' || false,
+  API_PORT: _.get(process, 'env.API_PORT') || 3000,
+};
 
 //Initialize logger
 const logger = createLogger({
-  level: _.get(process, 'env.LOG_LEVEL') || 'error',
+  level: config.LOG_LEVEL,
   format: format.combine(format.timestamp(), format.prettyPrint()),
   transports: [
     // - Write to all logs with level `info` and below to `clive.log`
@@ -38,7 +39,7 @@ const logger = createLogger({
     }),
   ],
 });
-if (process.env.NODE_ENV !== 'production') {
+if (config.NODE_ENV !== 'production') {
   logger.add(
     new transports.Console({
       format: format.simple(),
@@ -46,15 +47,15 @@ if (process.env.NODE_ENV !== 'production') {
   );
 }
 
-if (API) {
-  require('./router')(API_PORT);
+if (config.API) {
+  require('./router')(config.API_PORT);
 }
 
 // If we have a twitch client ID and you want to restrict postings of clips to only those channels Clive is watching
 // Do a one-time lookup of twitch login names to IDs
 let TWITCH_CHANNEL_IDS = [];
-if (TWITCH_CLIENT_ID && RESTRICT_CHANNELS) {
-  resolveTwitchUsernamesToIds(TWITCH_CHANNELS).then(userIds => {
+if (config.TWITCH_CLIENT_ID && config.RESTRICT_CHANNELS) {
+  resolveTwitchUsernamesToIds(config.TWITCH_CHANNELS).then(userIds => {
     TWITCH_CHANNEL_IDS = userIds;
     logStartInfo();
   });
@@ -62,24 +63,17 @@ if (TWITCH_CLIENT_ID && RESTRICT_CHANNELS) {
   logStartInfo();
 }
 
-const adapter = new FileSync(DB_FILE);
+const adapter = new FileSync(config.DB_FILE);
 const db = lowdb(adapter);
 db.defaults({ postedClipIds: [] }).write();
 
 function logStartInfo() {
-  logger.log('info', 'CONFIG SETTINGS:\n', {
-    DISCORD_WEBHOOK_URL,
-    DB_FILE,
-    TWITCH_CHANNELS,
-    TWITCH_CHANNEL_IDS,
-    RESTRICT_CHANNELS,
-    BROADCASTER_ONLY,
-    MODS_ONLY,
-    SUBS_ONLY,
-  });
+  const sanitizedSettings = _.cloneDeep(config);
+  delete sanitizedSettings.TWITCH_CLIENT_ID;
+  logger.log('info', 'CONFIG SETTINGS:\n', sanitizedSettings);
   logger.log(
     'info',
-    `Twitch Client ID is ${TWITCH_CLIENT_ID ? '' : 'NOT '}set`,
+    `Twitch Client ID is ${config.TWITCH_CLIENT_ID ? '' : 'NOT '}set`,
   );
 
   createTmiClient();
@@ -93,7 +87,7 @@ function createTmiClient() {
     connection: {
       reconnect: true,
     },
-    channels: TWITCH_CHANNELS,
+    channels: config.TWITCH_CHANNELS,
   };
 
   const client = new tmi.client(tmiOptions);
@@ -111,17 +105,17 @@ function createTmiClient() {
     if (self) return;
     // Broadcaster only mode
     const isBroadcaster = _.get(userstate, '[badges].broadcaster') === '1';
-    if (BROADCASTER_ONLY && !isBroadcaster) {
+    if (config.BROADCASTER_ONLY && !isBroadcaster) {
       logger.log('info', `NON-BROADCASTER posted a clip: ${message}`);
       return;
     }
     // Mods only mode
-    if (MODS_ONLY && !(userstate['mod'] || isBroadcaster)) {
+    if (config.MODS_ONLY && !(userstate['mod'] || isBroadcaster)) {
       logger.log('info', `NON-MOD posted a clip: ${message}`);
       return;
     }
     // Subs only mode
-    if (SUBS_ONLY && !userstate['subscriber']) {
+    if (config.SUBS_ONLY && !userstate['subscriber']) {
       logger.log('info', `NON-SUB posted a clip: ${message}`);
       return;
     }
@@ -147,7 +141,7 @@ function createTmiClient() {
             return;
           }
           // If we have a client ID we can use the Twitch API
-          if (TWITCH_CLIENT_ID) {
+          if (config.TWITCH_CLIENT_ID) {
             postUsingTwitchAPI(clipId);
           } else {
             // Fallback to dumb method of posting
@@ -173,7 +167,7 @@ function postUsingTwitchAPI(clipId) {
     logger.log('debug', 'Twitch clip results:', clipInfo);
 
     if (
-      RESTRICT_CHANNELS &&
+      config.RESTRICT_CHANNELS &&
       TWITCH_CHANNEL_IDS.indexOf(clipInfo.broadcaster_id) === -1
     ) {
       logger.log('info', 'OUTSIDER CLIP: Posted in chat from tracked channel');
@@ -239,14 +233,14 @@ function insertClipIdToDb(clipId) {
 }
 
 async function twitchApiGetCall(endpoint, id) {
-  if (!TWITCH_CLIENT_ID) return;
+  if (!config.TWITCH_CLIENT_ID) return;
   const options = {
     uri: `https://api.twitch.tv/helix/${endpoint}`,
     qs: {
       id: id,
     },
     headers: {
-      'Client-ID': TWITCH_CLIENT_ID,
+      'Client-ID': config.TWITCH_CLIENT_ID,
     },
     json: true,
   };
@@ -256,12 +250,11 @@ async function twitchApiGetCall(endpoint, id) {
     return response.data[0];
   } catch (err) {
     logger.log('error', `ERROR: GET twitch API /${endpoint}:`, err);
-    return;
   }
 }
 
 async function resolveTwitchUsernamesToIds(usernames) {
-  if (!TWITCH_CLIENT_ID) return [];
+  if (!config.TWITCH_CLIENT_ID) return [];
 
   const usernameFuncs = usernames.map(async username => {
     const options = {
@@ -270,7 +263,7 @@ async function resolveTwitchUsernamesToIds(usernames) {
         login: username.replace('#', ''),
       },
       headers: {
-        'Client-ID': TWITCH_CLIENT_ID,
+        'Client-ID': config.TWITCH_CLIENT_ID,
       },
       json: true,
     };
@@ -280,7 +273,6 @@ async function resolveTwitchUsernamesToIds(usernames) {
       return response.data[0].id;
     } catch (err) {
       logger.log('error', `ERROR: GET twitch API /users:`, err);
-      return;
     }
   });
   return await Promise.all(usernameFuncs).then(userIds => userIds);
@@ -298,13 +290,13 @@ function postToDiscord({ content, clipId, clipInfo }) {
 
   const options = {
     method: 'POST',
-    uri: DISCORD_WEBHOOK_URL,
+    uri: config.DISCORD_WEBHOOK_URL,
     body,
     json: true,
     resolveWithFullResponse: true,
   };
 
-  if (RICH_EMBED && TWITCH_CLIENT_ID) {
+  if (config.RICH_EMBED && config.TWITCH_CLIENT_ID) {
     const videoOptions = _.cloneDeep(options);
     delete videoOptions.body.embeds;
     videoOptions.body.content = `*${clipInfo.title}*\n${clipInfo.url}`;
@@ -346,7 +338,7 @@ function postToDiscord({ content, clipId, clipInfo }) {
 }
 
 function buildMessage({ userInfo, broadcasterInfo, gameInfo, clipInfo }) {
-  if (!RICH_EMBED) {
+  if (!config.RICH_EMBED) {
     const string = `*${clipInfo.title}*\n**${
       userInfo.display_name
     }** created a clip of **${broadcasterInfo.display_name}** playing __${
