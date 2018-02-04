@@ -43,6 +43,10 @@
 		"**/*.md": [
 			"prettier --write --parser --prose-wrap never markdown",
 			"git add"
+		],
+		"**/*.md": [
+			"prettier --write --parser graphql",
+			"git add"
 		]
 	}
 }
