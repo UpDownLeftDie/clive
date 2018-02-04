@@ -1,18 +1,19 @@
+'use strict';
 const Koa = require('koa');
 const koaBody = require('koa-bodyparser');
 const { graphqlKoa, graphiqlKoa } = require('apollo-server-koa');
 const app = new Koa();
 const router = require('koa-router')();
 
-module.exports = function initApi(PORT) {
+module.exports = function initApi(PORT, schema) {
   // route definitions
   app.use(koaBody());
 
   router
-    // .post('/graphql', graphqlKoa({ schema: myGraphQLSchema }))
-    // .get('/graphql', graphqlKoa({ schema: myGraphQLSchema }))
+    .post('/graphql', graphqlKoa({ schema }))
+    .get('/graphql', graphqlKoa({ schema }))
     .get(
-      '/graphiql',
+      '/',
       graphiqlKoa({
         endpointURL: '/graphql',
       }),

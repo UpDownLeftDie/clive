@@ -13,18 +13,18 @@ const { createLogger, format, transports } = require('winston');
 
 //Initialize constants
 const config = {
-  NODE_ENV: _.get(process, 'end.NODE_ENV'),
+  NODE_ENV: _.get(process, 'env.NODE_ENV') || 'dev',
   LOG_LEVEL: _.get(process, 'env.LOG_LEVEL') || 'error',
   DISCORD_WEBHOOK_URL: _.get(process, 'env.DISCORD_WEBHOOK_URL'),
   TWITCH_CHANNELS: generateChannelList(_.get(process, 'env.TWITCH_CHANNELS')),
   DB_FILE: _.get(process, 'env.DB_FILE') || 'db.json',
-  TWITCH_CLIENT_ID: _.get(process, 'env.TWITCH_CLIENT_ID') || null,
-  RESTRICT_CHANNELS: _.get(process, 'env.RESTRICT_CHANNELS') || true,
-  BROADCASTER_ONLY: _.get(process, 'env.BROADCASTER_ONLY') === 'true' || false,
-  MODS_ONLY: _.get(process, 'env.MODS_ONLY') === 'true' || false,
-  SUBS_ONLY: _.get(process, 'env.SUBS_ONLY') === 'true' || false,
-  RICH_EMBED: _.get(process, 'env.RICH_EMBED') === 'true' || false,
-  API: _.get(process, 'env.API') === 'true' || false,
+  TWITCH_CLIENT_ID: _.get(process, 'env.TWITCH_CLIENT_ID') || undefined,
+  RESTRICT_CHANNELS: _.get(process, 'env.RESTRICT_CHANNELS') != 'false',
+  BROADCASTER_ONLY: _.get(process, 'env.BROADCASTER_ONLY') == 'true' || false,
+  MODS_ONLY: _.get(process, 'env.MODS_ONLY') == 'true' || false,
+  SUBS_ONLY: _.get(process, 'env.SUBS_ONLY') == 'true' || false,
+  RICH_EMBED: _.get(process, 'env.RICH_EMBED') == 'true' || false,
+  API: _.get(process, 'env.API') == 'true' || false,
   API_PORT: _.get(process, 'env.API_PORT') || 3000,
 };
 
@@ -48,7 +48,8 @@ if (config.NODE_ENV !== 'production') {
 }
 
 if (config.API) {
-  require('./router')(config.API_PORT);
+  const schema = require('./schema')(config);
+  require('./router')(config.API_PORT, schema);
 }
 
 // If we have a twitch client ID and you want to restrict postings of clips to only those channels Clive is watching

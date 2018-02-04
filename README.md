@@ -76,6 +76,8 @@ All three set to `false` on means anyone can post a clip link. Be careful if you
 * ~~Set the `DISCORD_WEBHOOK_URL` to pull from an evar or something.~~
 * ~~Track previously posted twitch clips~~
 * ~~Use Discord Rich Embed messages~~
+* Add API
+* Support multiple Discord webhooks
 * Having a UI or hosting this somewhere would be nice.
 * Make clive an actual Discord bot, but that would require actual work lol.
 * ~~MFW the Readme is bigger than the app LUL~~
