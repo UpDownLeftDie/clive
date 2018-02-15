@@ -1,61 +1,82 @@
 'use strict';
 const { makeExecutableSchema } = require('graphql-tools');
-const camelCase = require('camelcase');
+const camelcaseKeys = require('camelcase-keys');
+const _ = require('lodash');
+const { loadConfig } = require('./utils');
 
-module.exports = function initApi(config) {
+module.exports = function initApi() {
+  const camelCaseConfig = camelcaseKeys(loadConfig());
   return makeExecutableSchema({
-    typeDefs: buildTypeDefs(config),
-    resolvers: buildResolvers(config),
+    typeDefs: buildTypeDefs(camelCaseConfig),
+    resolvers: buildResolvers(),
   });
 };
 
 function buildTypeDefs(config) {
-  const schemaString = convertConfig(config);
-
+  const schemaString = _generateSchemaString(config);
   // Construct a schema, using GraphQL schema language
   const typeDefs = `
+	type Query {
+    settings: Setting
+  }
+
+	type Mutation {
+		updateSettings(
+			${schemaString}
+		): Setting
+	}
+
   type Setting {
     ${schemaString}
-  }
-  
-  type Query {
-    settings: [Setting]
   }
 `;
 
   return typeDefs;
 }
 
-function buildResolvers(config) {
+function buildResolvers() {
   const resolvers = {
     Query: {
-      settings: () => config,
+      settings() {
+        return camelcaseKeys(loadConfig());
+      },
+    },
+    Mutation: {
+      updateSettings,
     },
   };
   return resolvers;
 }
 
-function convertConfig(config) {
+function updateSettings(context, args) {
+  for (const [key, value] of Object.entries(args)) {
+    const envSetting = _.snakeCase(key).toUpperCase();
+    process.env[envSetting] = value;
+  }
+
+  return camelcaseKeys(loadConfig());
+}
+
+function _generateSchemaString(config) {
   const ignoredSettigs = [
-    'NODE_ENV',
-    'LOG_LEVEL',
-    'LOG_FILE',
-    'DB_FILE',
-    'API',
-    'API_PORT',
+    'nodeEnv',
+    'logLevel',
+    'logFile',
+    'dbFile',
+    'api',
+    'apiPort',
+    'twitchClientId',
   ];
   let str = '';
   for (const [key, value] of Object.entries(config)) {
     if (ignoredSettigs.indexOf(key) < 0) {
-      str += `${camelCase(key)}: ${determineType(value)}, `;
+      str += `${key}: ${_determineType(value)}\n`;
     }
   }
-
-  str = str.slice(0, str.length - 2);
   return str;
 }
 
-function determineType(value) {
+function _determineType(value) {
   if (typeof value === 'object') {
     return '[String]';
   } else if (typeof value === 'boolean') {
