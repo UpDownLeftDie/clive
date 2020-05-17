@@ -26,6 +26,9 @@ const {
   TWITCH_CHANNELS,
   URL_AVATAR,
 } = config;
+const adapter = new FileSync(DB_FILE);
+const db = lowdb(adapter);
+db.defaults({ postedClipIds: [] }).write();
 
 // (twitch.tv\/.*\/clip) check https://www.twitch.tv/username/clip/clip_id
 // (clips.twitch.tv) checks https://clips.twitch.tv/clip_id
@@ -35,38 +38,18 @@ main();
 async function main() {
   // Application token, to be fetched async via getAppToken
   var APP_TOKEN = await getAppToken();
-  // If we have a twitch client ID and you want to restrict postings of clips to
-  // only those channels Clive is watching
+  // If we have a twitch app token and you want to restrict postings of clips to only those channels Clive is watching
   // Do a one-time lookup of twitch login names to IDs
   let TWITCH_CHANNEL_IDS = [];
   if (APP_TOKEN && RESTRICT_CHANNELS) {
-    resolveTwitchUsernamesToIds(TWITCH_CHANNELS).then((userIds) => {
-      TWITCH_CHANNEL_IDS = userIds;
-      logStartInfo();
-    });
-  } else {
-    logStartInfo();
+    const userIds = await resolveTwitchUsernamesToIds(TWITCH_CHANNELS);
+    TWITCH_CHANNEL_IDS = userIds;
   }
 
-  const adapter = new FileSync(DB_FILE);
-  const db = lowdb(adapter);
-  db.defaults({ postedClipIds: [] }).write();
+  logger.log('info', 'CONFIG SETTINGS:\n', config);
+  logger.log('info', `Twitch App Token is ${APP_TOKEN ? '' : 'NOT '}set`);
 
-  function logStartInfo() {
-    logger.log('info', 'CONFIG SETTINGS:\n', {
-      DISCORD_WEBHOOK_URL,
-      DB_FILE,
-      TWITCH_CHANNELS,
-      TWITCH_CHANNEL_IDS,
-      RESTRICT_CHANNELS,
-      BROADCASTER_ONLY,
-      MODS_ONLY,
-      SUBS_ONLY,
-    });
-    logger.log('info', `Twitch App Token is ${APP_TOKEN ? '' : 'NOT '}set`);
-
-    createTwitchClient();
-  }
+  createTwitchClient();
 
   function createTwitchClient() {
     chat.connect().then((globalUserState) => {
